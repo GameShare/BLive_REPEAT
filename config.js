@@ -2,7 +2,7 @@
 var config = {
 
     // 直播间的房间号
-    roomId: 102,
+    roomId: 66688,
 
     // 断线之后重连的等待时间
     timeout : 3000,

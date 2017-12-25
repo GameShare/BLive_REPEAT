@@ -87,15 +87,19 @@ class BLive{
      */
     async getTrueRoomID(RoomId){
         try{
-            let res = await request.get(`http://live.bilibili.com/${RoomId}`).timeout(3000);
 
+            // 获取直播间真实直播地址
+            let resRoomId = await request.get(`http://api.live.bilibili.com/room/v1/Room/room_init?id=${RoomId}`).timeout(3000);
             // 一定几率不给回传数据
-            if (!res) { throw new Error("未接收到回传数据"); }
+            if (!resRoomId) { throw new Error("未接收到房间真实ID的回传数据"); }
+            let TrueRoomID = resRoomId.body.data.room_id;
 
-            // 开始进行解析
-            let TrueRoomID = res.text.match(/var ROOMID = (\d*?);/)[1];
-            let RoomTitle  = res.text.match(/itemprop="name" content="(.*?) - (.*?) - /)[1];
-            let RoomUP     = res.text.match(/itemprop="name" content="(.*?) - (.*?) - /)[2];
+            // 获取直播间信息
+            let resTitle = await request.get(`http://api.live.bilibili.com/room/v1/Room/get_info?room_id=${TrueRoomID}&from=room`).timeout(3000);
+            let resUP = await request.get(`http://api.live.bilibili.com/live_user/v1/UserInfo/get_anchor_in_room?roomid=${TrueRoomID}`).timeout(3000);
+            if (!resTitle || !resUP) { throw new Error("未接收到房间信息的回传数据"); }
+            let RoomTitle = resTitle.body.data.title;
+            let RoomUP = resUP.body.data.info.uname;
 
             this.roomInformation = { TrueRoomID, RoomTitle, RoomUP};
 
@@ -130,18 +134,17 @@ class BLive{
         try{
             common.logSimple(this.currentSymbol + " -- 当前状态 : statusFlag " + this.statusFlag + "  streamFlag " + this.streamFlag)
 
-            let fetchURL = 'http://live.bilibili.com/live/getInfo?roomid=' + this.roomInformation.TrueRoomID;
+            let fetchURL = 'http://api.live.bilibili.com/room/v1/Room/get_info?room_id=' + this.roomInformation.TrueRoomID;
             let infoRes = await request.get(fetchURL).timeout(5000);
 
             /**
-             * JSON.parse(res.text).data._status 理论上只有两个值 on 和 off
-             * on 代表该直播间已开启, off 代表该直播间已关闭
+             * infoRes.body.data.live_status 的值会有如下取值:  0 --- 未直播  1 --- 正在直播  2 --- 正在轮播
              * 但需要注意的是, 直播间开启并不代表up主正在上传视频, 因为两者并不同步
              */
-            switch (JSON.parse(infoRes.text).data._status) {
+            switch (infoRes.body.data.live_status) {
 
                 // 如果直播间开启, 而且之前直播间是关闭的, 则调用 startDownload 开始下载视频
-                case "on":
+                case 1:
 
                     if (!this.statusFlag || !this.streamFlag) {
                         common.log(`直播间 ${this.RoomId} 已经开启`);
@@ -156,7 +159,7 @@ class BLive{
                     break;
 
                 // 如果直播间关闭, 而且之前直播间是开启的, 则断开连接
-                case "off":
+                case 0:
                     if (this.statusFlag) {
                         common.log(`直播间 ${this.RoomId} 已经关闭`);
                         showMsg("BLive 直播监听程序", `直播间 ${this.RoomId} 已经关闭`, (err) => { });
@@ -179,12 +182,18 @@ class BLive{
 
                     this.firstFlag = 0;
                     break;
+                
+                // 大发慈悲地对轮播进行一下处理
+                case 2:
+                    common.logError("直播间正在进行轮播, 本程序表示懒得处理轮播相关的内容, 自己去下载视频去");
+                    process.exit(1);
+
 
                 // 理论上是不会走到这一块的..
                 // 如果走到的话...一般是此次请求未收到数据或收到了错误的数据
                 default:
                     common.logError('直播间状态未知');
-                    common.logError(`收到的状态码为 : ${JSON.parse(res.text).data._status}`);
+                    common.logError(`收到的状态码为 : ${infoRes.body.data.live_status}`);
 
             }
         } catch (err) {
@@ -244,20 +253,13 @@ class BLive{
             let stream = fs.createWriteStream("./download/" + fileName);
 
             // 用于请求下载地址的地址
-            let getLinkURL = 'http://live.bilibili.com/api/playurl?cid=' + this.roomInformation.TrueRoomID + '&player=1&quality=0';
+            let getLinkURL = `https://api.live.bilibili.com/api/playurl?cid=${this.roomInformation.TrueRoomID}&otype=json&quality=0&platform=web`;
 
             // 发送请求, 该请求用于获取视频的下载地址
             let urlRes = await request.get(getLinkURL).timeout(5000)
 
-            // 一定几率会传回 {"code":-400,"msg":"room error","data":[]}
-            if (urlRes.text === '{"code":-400,"msg":"room error","data":[]}') {
-                throw new Error("传回格式不正确")
-                return;
-            }
-
             // 若运行到此处, 则代表已接收到了视频地址, 接下来进行解析
-            let match = urlRes.text.match(/<url><!\[CDATA\[.*?\]\]><\/url>/)
-            let url   = match[0].replace("<url><![CDATA[", "").replace("]]></url>", "");
+            let url = JSON.parse(urlRes.text).durl[0].url;
 
             common.log('已解析出下载地址, 开始下载, 保存的视频的文件名为 : ' + fileName)
 
