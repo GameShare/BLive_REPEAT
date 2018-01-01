@@ -2,7 +2,7 @@
 var config = {
 
     // 直播间的房间号
-    roomId: 66688,
+    roomId: 132688,
 
     // 断线之后重连的等待时间
     timeout : 3000,
@@ -11,7 +11,11 @@ var config = {
     setDateTimeout : 120,
 
     // 电脑里python的程序名称, 默认为 windows 下的 python, python版本需要大于3
-    pythonName : 'python3',
+    pythonName : 'python',
+
+    // 视频以及弹幕文件要保存的位置, 默认为 空, 即程序目录下的 download 文件夹
+    // 该参数请务必以 "/"  结尾!    示例: "./download/"
+    downloadFolder: "",
 
     // 视频的分辨率, 默认为 1920*1080
     // 该参数理论上无论视频分辨率(只要是 16 : 9)是什么都不用修改

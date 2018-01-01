@@ -12,6 +12,9 @@ class Danmu{
         // 全局 client
         this.client = new net.Socket();
 
+        // 视频以及弹幕文件所下载的地址
+        this.downloadFolder = config.downloadFolder || "./download/";
+
         // 用于发送心跳包的计时器
         this.heartTimer = null;
 
@@ -162,9 +165,9 @@ class Danmu{
                 this.xmlTime = Math.ceil(+new Date() / 1000) - 5;
 
                 // 每次开启弹幕收集器时, 更新文件名变量
-                this.curFileName.danmuFileName     = "./download/" + this.currentSymbol + '.xml';
-                this.curFileName.danmuAssFileName  = "./download/" + this.currentSymbol + '.ass';
-                this.curFileName.danmuTempFileName = "./download/" + this.currentSymbol + '_temp.xml';
+                this.curFileName.danmuFileName     = this.downloadFolder + this.currentSymbol + '.xml';
+                this.curFileName.danmuAssFileName  = this.downloadFolder + this.currentSymbol + '.ass';
+                this.curFileName.danmuTempFileName = this.downloadFolder + this.currentSymbol + '_temp.xml';
 
             }
 

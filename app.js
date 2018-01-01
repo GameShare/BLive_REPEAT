@@ -44,6 +44,9 @@ class BLive{
         // 判断当前接受弹幕是否为第一次
         this.firstFlag = true;
 
+        // 视频以及弹幕文件所下载的地址
+        this.downloadFolder = config.downloadFolder || "./download/";
+
         // 用于接收视频流的 RBQ
         this.videoRBQ = null;
 
@@ -67,10 +70,10 @@ class BLive{
     /**
      * 开始爬取视频数据!
      */
-    start(){
-        this.getTrueRoomID(this.RoomId)
-            .then(this.makeNewDirection)
-            .then(() => { this.checkRoomInfo()});
+    async start(){
+        await this.getTrueRoomID(this.RoomId);
+        await this.makeNewDirection();
+        this.checkRoomInfo();
 
         // 定时检查视频连接是否还在, 如果已断开则重连
         setInterval(() => {
@@ -106,7 +109,7 @@ class BLive{
             common.log(`房间信息 : 输入的房间地址为 ${RoomId}, 已解析出房间真实地址为 ${TrueRoomID}`);
             common.log(`房间信息 : 房间标题为 ${RoomTitle}, UP主为 ${RoomUP}`)
 
-            return TrueRoomID;
+            return;
 
         } catch (err) {
             let _this = this;
@@ -122,8 +125,14 @@ class BLive{
      * 在当前目录下新建一个名为 download 的文件夹
      * 可能文件夹已存在, 所以忽略错误
      */
-    makeNewDirection(){
-        return fsp.mkdir("./download/").catch(()=>{})
+    async makeNewDirection(){
+        await fsp.mkdir(this.downloadFolder).catch((err)=>{})
+        
+        let folderStat = await fsp.stat(this.downloadFolder);
+        if(!folderStat.isDirectory()){
+            common.logError("视频及弹幕的储存地址不是一个目录, 请检查 config 中的 downloadFolder 项!")
+            process.exit(1);
+        }
     }
 
     /**
@@ -250,7 +259,7 @@ class BLive{
             let fileName = this.currentSymbol + '.flv';
 
             // 定义流, 用于保存视频文件
-            let stream = fs.createWriteStream("./download/" + fileName);
+            let stream = fs.createWriteStream(this.downloadFolder + fileName);
 
             // 用于请求下载地址的地址
             let getLinkURL = `https://api.live.bilibili.com/api/playurl?cid=${this.roomInformation.TrueRoomID}&otype=json&quality=0&platform=web`;
@@ -292,14 +301,14 @@ class BLive{
      */
     check0ByteVideo(checkSymbol){
         setTimeout(() => {
-            fsp.stat("./download/" + checkSymbol + ".flv").then((stats) => {
+            fsp.stat(this.downloadFolder + checkSymbol + ".flv").then((stats) => {
 
                 if (stats.size < 1000) {
                     common.log(`发现 0 字节视频, 标识符为 ${checkSymbol}, 即将进行删除工作!`)
 
-                    fsp.unlink("./download/" + checkSymbol + ".flv").catch(() => { });
-                    fsp.unlink("./download/" + checkSymbol + ".ass").catch(() => { });
-                    fsp.unlink("./download/" + checkSymbol + ".xml").catch(() => { });
+                    fsp.unlink(this.downloadFolder + checkSymbol + ".flv").catch(() => { });
+                    fsp.unlink(this.downloadFolder + checkSymbol + ".ass").catch(() => { });
+                    fsp.unlink(this.downloadFolder + checkSymbol + ".xml").catch(() => { });
                 }
             }).catch(err => { common.logError("检查0字节文件发送错误 : " + err.toString());})
         }, 3000)
