@@ -127,8 +127,10 @@ class BLive{
      */
     async makeNewDirection(){
         await fsp.mkdir(this.downloadFolder).catch((err)=>{})
-        
-        let folderStat = await fsp.stat(this.downloadFolder);
+        let folderStat = await fsp.stat(this.downloadFolder).catch(err => {
+            common.logError("目录创建未成功, 请检查 config 中的 downloadFolder 项!");
+            process.exit(1);
+        });
         if(!folderStat.isDirectory()){
             common.logError("视频及弹幕的储存地址不是一个目录, 请检查 config 中的 downloadFolder 项!")
             process.exit(1);
