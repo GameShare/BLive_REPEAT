@@ -1,6 +1,7 @@
 const colors    = require('colors');
 const cp        = require('child_process');
 const request   = require('superagent');
+const os        = require('os')
 
 const timeSet   = require('./timeSet/timeSet.js');
 
@@ -22,26 +23,22 @@ module.exports = {
 
     // 输出调试信息
     log(str){
-        process.stdout.write(new Date().toLocaleString() + "  ");
-        console.log(str.info);
+        process.stdout.write(new Date().toLocaleString() + "  " + str.info + os.EOL);
     },
 
     // 输出错误信息
     logError(str){
-        process.stdout.write(new Date().toLocaleString() + "  ");
-        console.log(str.error);
+        process.stdout.write(new Date().toLocaleString() + "  " + str.error + os.EOL);
     },
 
     // 输出弹幕信息
     logDanmu(str){
-        process.stdout.write(new Date().toLocaleString() + "  ");
-        console.log(str.danmu);
+        process.stdout.write(new Date().toLocaleString() + "  " + str.danmu + os.EOL);
     },
     
     // 输出简单的调试信息
     logSimple(str){
-        process.stdout.write(new Date().toLocaleString() + "  ");
-        console.log(str.simple);
+        process.stdout.write(new Date().toLocaleString() + "  " + str.simple + os.EOL);
     },
 
     /**
